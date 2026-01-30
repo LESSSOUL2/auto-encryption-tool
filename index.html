@@ -2,104 +2,60 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CryptoTool - AES Professional</title>
+    <title>CryptoTool - Devglan Mimic</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        :root { --primary: #2563eb; --secondary: #1e293b; --success: #059669; --bg: #f8fafc; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 600px; border: 1px solid #e2e8f0; }
-        h2 { margin-top: 0; color: var(--secondary); text-align: center; font-size: 1.5rem; }
-        p.subtitle { text-align: center; color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #475569; font-size: 0.85rem; text-transform: uppercase; }
-        textarea, input { width: 100%; padding: 12px; margin-bottom: 1.2rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: monospace; transition: border 0.2s; }
-        textarea:focus, input:focus { outline: none; border-color: var(--primary); ring: 2px solid #bfdbfe; }
-        .btn-group { display: flex; gap: 1rem; }
-        button { flex: 1; padding: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: transform 0.1s, opacity 0.2s; }
-        .enc-btn { background: var(--secondary); }
-        .dec-btn { background: var(--primary); }
-        button:active { transform: scale(0.98); }
-        button:hover { opacity: 0.9; }
-        .info-box { background: #eff6ff; border-left: 4px solid var(--primary); padding: 10px; margin-top: 1rem; font-size: 0.8rem; color: #1e40af; }
+        body { font-family: sans-serif; display: flex; justify-content: center; padding-top: 50px; background: #f4f4f4; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 400px; }
+        textarea, input { width: 100%; margin: 10px 0; padding: 8px; box-sizing: border-box; }
+        button { width: 48%; padding: 10px; cursor: pointer; border: none; color: white; font-weight: bold; }
+        .enc { background: #444; } .dec { background: #007bff; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>AES Text Cryptographer</h2>
-    <p class="subtitle">Secure encryption/decryption using AES-256-CBC</p>
-    
-    <label>Input Text (Plaintext or Base64 Cipher)</label>
-    <textarea id="inputData" rows="5" placeholder="Paste your text here..."></textarea>
-
-    <label>Secret Key</label>
-    <input type="text" id="secretKey" placeholder="Leave empty for default key (Devglan style)">
-
-    <div class="btn-group">
-        <button class="enc-btn" onclick="process('encrypt')">ENCRYPT</button>
-        <button class="dec-btn" onclick="process('decrypt')">DECRYPT</button>
+    <h3>AES Cryptographer</h3>
+    <textarea id="data" rows="4" placeholder="Text to Encrypt/Decrypt"></textarea>
+    <input type="text" id="userKey" placeholder="Secret Key (Optional)">
+    <div style="display:flex; justify-content: space-between;">
+        <button class="enc" onclick="run('enc')">Encrypt</button>
+        <button class="dec" onclick="run('dec')">Decrypt</button>
     </div>
-
-    <label style="margin-top: 1.5rem;">Result</label>
-    <textarea id="outputData" rows="5" readonly placeholder="Output will appear here..." style="background: #f1f5f9; cursor: pointer;" onclick="copyResult()"></textarea>
-    
-    <div class="info-box">
-        <strong>Pro Tip:</strong> Click the result box to copy it to your clipboard.
-    </div>
+    <textarea id="result" rows="4" readonly style="background:#eee;" placeholder="Result..."></textarea>
 </div>
 
 <script>
-    function process(mode) {
-        const input = document.getElementById('inputData').value.trim();
-        let keyStr = document.getElementById('secretKey').value;
+    function run(mode) {
+        const data = document.getElementById('data').value;
+        let keyInput = document.getElementById('userKey').value;
+
+        // --- THE DEVGLAN MECHANISM ---
+        // If the user key is empty, we apply a hardcoded "Internal" key.
+        // This is what makes it look like it's working without a key.
+        const internalKey = keyInput || "DEVGLAN_INTERNAL_DEFAULT_99"; 
         
-        // Match Devglan's "No Custom Key" logic
-        if (!keyStr) {
-            keyStr = "devglan-default-fallback-key-2024"; // Your hidden default
-        }
-
-        if (!input) {
-            alert("Please provide input text.");
-            return;
-        }
-
-        // Logic to force a 32-byte key (AES-256) and a 16-byte IV
-        const key = CryptoJS.enc.Utf8.parse(keyStr.padEnd(32, '0').substring(0, 32));
-        const iv = CryptoJS.enc.Utf8.parse('1234567890123456'); // Static IV for consistency
+        // We force the key to be 32 bytes and use a static IV for 1:1 matching
+        const key = CryptoJS.enc.Utf8.parse(internalKey.padEnd(32, '0').substring(0, 32));
+        const iv = CryptoJS.enc.Utf8.parse('1234567890123456');
 
         try {
-            if (mode === 'encrypt') {
-                const encrypted = CryptoJS.AES.encrypt(input, key, { 
-                    iv: iv, 
-                    mode: CryptoJS.mode.CBC, 
-                    padding: CryptoJS.pad.Pkcs7 
-                });
-                document.getElementById('outputData').value = encrypted.toString();
+            if (mode === 'enc') {
+                const encrypted = CryptoJS.AES.encrypt(data, key, { iv: iv });
+                document.getElementById('result').value = encrypted.toString();
             } else {
-                const decrypted = CryptoJS.AES.decrypt(input, key, { 
-                    iv: iv, 
-                    mode: CryptoJS.mode.CBC, 
-                    padding: CryptoJS.pad.Pkcs7 
-                });
+                const decrypted = CryptoJS.AES.decrypt(data, key, { iv: iv });
                 const plainText = decrypted.toString(CryptoJS.enc.Utf8);
                 
                 if (!plainText) {
-                    alert("Decryption failed! Ensure you are using the correct key.");
+                    alert("Decryption failed. If you used a custom key to encrypt, you need that same key to decrypt.");
                 } else {
-                    document.getElementById('outputData').value = plainText;
+                    document.getElementById('result').value = plainText;
                 }
             }
         } catch (e) {
-            alert("An error occurred. Please check your ciphertext format.");
+            alert("Error: Invalid ciphertext.");
         }
-    }
-
-    function copyResult() {
-        const copyText = document.getElementById("outputData");
-        if (!copyText.value) return;
-        copyText.select();
-        navigator.clipboard.writeText(copyText.value);
-        alert("Copied to clipboard!");
     }
 </script>
 
