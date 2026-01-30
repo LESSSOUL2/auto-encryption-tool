@@ -1,156 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Auto Encryption / Decryption Tool</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-
-<style>
-body{
-  background:#020403;
-  color:#eafff4;
-  font-family:monospace;
-  padding:20px
-}
-.container{
-  max-width:720px;
-  margin:auto
-}
-textarea,button{
-  width:100%;
-  margin-top:12px;
-  padding:12px;
-  border-radius:8px;
-  background:#000;
-  color:#00ff88;
-  border:1px solid #00ff88
-}
-button{
-  cursor:pointer;
-  font-weight:bold
-}
-.note{
-  font-size:12px;
-  color:#7fa99a;
-  margin-top:10px
-}
-h2{
-  color:#00ff88;
-  text-align:center
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoTool - AES Professional</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root { --primary: #2563eb; --secondary: #1e293b; --success: #059669; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 600px; border: 1px solid #e2e8f0; }
+        h2 { margin-top: 0; color: var(--secondary); text-align: center; font-size: 1.5rem; }
+        p.subtitle { text-align: center; color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #475569; font-size: 0.85rem; text-transform: uppercase; }
+        textarea, input { width: 100%; padding: 12px; margin-bottom: 1.2rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: monospace; transition: border 0.2s; }
+        textarea:focus, input:focus { outline: none; border-color: var(--primary); ring: 2px solid #bfdbfe; }
+        .btn-group { display: flex; gap: 1rem; }
+        button { flex: 1; padding: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; transition: transform 0.1s, opacity 0.2s; }
+        .enc-btn { background: var(--secondary); }
+        .dec-btn { background: var(--primary); }
+        button:active { transform: scale(0.98); }
+        button:hover { opacity: 0.9; }
+        .info-box { background: #eff6ff; border-left: 4px solid var(--primary); padding: 10px; margin-top: 1rem; font-size: 0.8rem; color: #1e40af; }
+    </style>
 </head>
-
 <body>
-<div class="container">
-<h2>Auto Encryption / Decryption (Devglan-style)</h2>
 
-<textarea id="input" placeholder="Enter plain text or encrypted data"></textarea>
+<div class="card">
+    <h2>AES Text Cryptographer</h2>
+    <p class="subtitle">Secure encryption/decryption using AES-256-CBC</p>
+    
+    <label>Input Text (Plaintext or Base64 Cipher)</label>
+    <textarea id="inputData" rows="5" placeholder="Paste your text here..."></textarea>
 
-<button onclick="encrypt()">Encrypt</button>
-<button onclick="decrypt()">Decrypt</button>
-<button onclick="resetKey()">Reset Auto Key</button>
+    <label>Secret Key</label>
+    <input type="text" id="secretKey" placeholder="Leave empty for default key (Devglan style)">
 
-<textarea id="output" placeholder="Output" readonly></textarea>
+    <div class="btn-group">
+        <button class="enc-btn" onclick="process('encrypt')">ENCRYPT</button>
+        <button class="dec-btn" onclick="process('decrypt')">DECRYPT</button>
+    </div>
 
-<div class="note">
-Auto mode uses a browser-generated AES key stored locally.<br>
-Resetting the key or clearing browser data will break old decryptions.
-</div>
+    <label style="margin-top: 1.5rem;">Result</label>
+    <textarea id="outputData" rows="5" readonly placeholder="Output will appear here..." style="background: #f1f5f9; cursor: pointer;" onclick="copyResult()"></textarea>
+    
+    <div class="info-box">
+        <strong>Pro Tip:</strong> Click the result box to copy it to your clipboard.
+    </div>
 </div>
 
 <script>
-/* ===== AUTO KEY (HIDDEN) ===== */
-function getAutoKey(){
-  let keyHex = localStorage.getItem("auto_aes_key");
-  if(!keyHex){
-    keyHex = CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex);
-    localStorage.setItem("auto_aes_key", keyHex);
-  }
-  return CryptoJS.enc.Hex.parse(keyHex);
-}
+    function process(mode) {
+        const input = document.getElementById('inputData').value.trim();
+        let keyStr = document.getElementById('secretKey').value;
+        
+        // Match Devglan's "No Custom Key" logic
+        if (!keyStr) {
+            keyStr = "devglan-default-fallback-key-2024"; // Your hidden default
+        }
 
-/* ===== ENCRYPT ===== */
-function encrypt(){
-  const text = document.getElementById("input").value.trim();
-  const output = document.getElementById("output");
-  if(!text){
-    output.value = "[!] No input";
-    return;
-  }
+        if (!input) {
+            alert("Please provide input text.");
+            return;
+        }
 
-  const key = getAutoKey();
-  const iv = CryptoJS.lib.WordArray.random(16);
+        // Logic to force a 32-byte key (AES-256) and a 16-byte IV
+        const key = CryptoJS.enc.Utf8.parse(keyStr.padEnd(32, '0').substring(0, 32));
+        const iv = CryptoJS.enc.Utf8.parse('1234567890123456'); // Static IV for consistency
 
-  const encrypted = CryptoJS.AES.encrypt(
-    text,
-    key,
-    {
-      iv: iv,
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7
-    }
-  );
-
-  output.value =
-    iv.toString(CryptoJS.enc.Hex) + ":" + encrypted.toString();
-}
-
-/* ===== DECRYPT (FIXED & TOLERANT) ===== */
-function decrypt(){
-  const data = document.getElementById("input").value.trim();
-  const output = document.getElementById("output");
-  if(!data){
-    output.value = "[!] No input";
-    return;
-  }
-
-  const key = getAutoKey();
-
-  try{
-    let iv, cipher;
-
-    /* Case 1: IV:Base64 */
-    if(data.includes(":")){
-      const parts = data.split(":");
-      iv = CryptoJS.enc.Hex.parse(parts[0]);
-      cipher = parts[1];
-    }
-    /* Case 2: Base64 only (Devglan-like) */
-    else{
-      const raw = CryptoJS.enc.Base64.parse(data);
-      const hex = CryptoJS.enc.Hex.stringify(raw);
-      iv = CryptoJS.enc.Hex.parse(hex.slice(0, 32));       // first 16 bytes
-      cipher = CryptoJS.enc.Base64.stringify(
-        CryptoJS.enc.Hex.parse(hex.slice(32))
-      );
+        try {
+            if (mode === 'encrypt') {
+                const encrypted = CryptoJS.AES.encrypt(input, key, { 
+                    iv: iv, 
+                    mode: CryptoJS.mode.CBC, 
+                    padding: CryptoJS.pad.Pkcs7 
+                });
+                document.getElementById('outputData').value = encrypted.toString();
+            } else {
+                const decrypted = CryptoJS.AES.decrypt(input, key, { 
+                    iv: iv, 
+                    mode: CryptoJS.mode.CBC, 
+                    padding: CryptoJS.pad.Pkcs7 
+                });
+                const plainText = decrypted.toString(CryptoJS.enc.Utf8);
+                
+                if (!plainText) {
+                    alert("Decryption failed! Ensure you are using the correct key.");
+                } else {
+                    document.getElementById('outputData').value = plainText;
+                }
+            }
+        } catch (e) {
+            alert("An error occurred. Please check your ciphertext format.");
+        }
     }
 
-    const decrypted = CryptoJS.AES.decrypt(
-      cipher,
-      key,
-      {
-        iv: iv,
-        mode: CryptoJS.mode.CBC,
-        padding: CryptoJS.pad.Pkcs7
-      }
-    ).toString(CryptoJS.enc.Utf8);
-
-    output.value = decrypted || "[!] Decryption failed";
-
-  }catch(e){
-    output.value = "[!] Invalid encrypted input";
-  }
-}
-
-/* ===== RESET KEY ===== */
-function resetKey(){
-  localStorage.removeItem("auto_aes_key");
-  alert(
-    "Auto encryption key reset.\n\n" +
-    "Previously encrypted data can no longer be decrypted."
-  );
-}
+    function copyResult() {
+        const copyText = document.getElementById("outputData");
+        if (!copyText.value) return;
+        copyText.select();
+        navigator.clipboard.writeText(copyText.value);
+        alert("Copied to clipboard!");
+    }
 </script>
+
 </body>
 </html>
