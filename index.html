@@ -2,59 +2,96 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CryptoTool - Devglan Mimic</title>
+    <title>Devglan Mimic - Diagnostic Mode</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; padding-top: 50px; background: #f4f4f4; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 400px; }
-        textarea, input { width: 100%; margin: 10px 0; padding: 8px; box-sizing: border-box; }
-        button { width: 48%; padding: 10px; cursor: pointer; border: none; color: white; font-weight: bold; }
-        .enc { background: #444; } .dec { background: #007bff; }
+        body { font-family: monospace; padding: 20px; background: #222; color: #fff; }
+        .container { max-width: 600px; margin: 0 auto; background: #333; padding: 20px; border-radius: 8px; }
+        textarea, input { width: 100%; margin-bottom: 10px; padding: 10px; border-radius: 4px; border: none; }
+        button { padding: 10px 20px; cursor: pointer; font-weight: bold; background: #00d4ff; border: none; }
+        .status { margin-top: 10px; color: yellow; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h3>AES Cryptographer</h3>
-    <textarea id="data" rows="4" placeholder="Text to Encrypt/Decrypt"></textarea>
-    <input type="text" id="userKey" placeholder="Secret Key (Optional)">
-    <div style="display:flex; justify-content: space-between;">
-        <button class="enc" onclick="run('enc')">Encrypt</button>
-        <button class="dec" onclick="run('dec')">Decrypt</button>
-    </div>
-    <textarea id="result" rows="4" readonly style="background:#eee;" placeholder="Result..."></textarea>
+<div class="container">
+    <h2>Devglan Mimic (Debug Mode)</h2>
+    <p>1. Enter text below.</p>
+    <textarea id="inputText" placeholder="Enter text to encrypt..."></textarea>
+    
+    <p>2. Secret Key (Leave empty to use 'Hidden Default')</p>
+    <input type="text" id="secretKey" placeholder="Leave blank to mimic Devglan behavior">
+
+    <br><br>
+    <button onclick="testLibrary()">Check if Ready</button>
+    <button onclick="execute('encrypt')">Encrypt</button>
+    <button onclick="execute('decrypt')">Decrypt</button>
+
+    <p>3. Result:</p>
+    <textarea id="outputText" readonly></textarea>
+    <div id="debugLog" class="status">Waiting for action...</div>
 </div>
 
 <script>
-    function run(mode) {
-        const data = document.getElementById('data').value;
-        let keyInput = document.getElementById('userKey').value;
+    // 1. CHECK IF LIBRARY LOADED
+    window.onload = function() {
+        if (typeof CryptoJS === 'undefined') {
+            document.getElementById('debugLog').innerHTML = "CRITICAL ERROR: CryptoJS library did not load. Check your internet connection.";
+            document.getElementById('debugLog').style.color = "red";
+            alert("Error: The encryption library could not be loaded. You must be connected to the internet.");
+        } else {
+            document.getElementById('debugLog').innerHTML = "System Ready. Library Loaded.";
+            document.getElementById('debugLog').style.color = "#00ff00";
+        }
+    };
 
-        // --- THE DEVGLAN MECHANISM ---
-        // If the user key is empty, we apply a hardcoded "Internal" key.
-        // This is what makes it look like it's working without a key.
-        const internalKey = keyInput || "DEVGLAN_INTERNAL_DEFAULT_99"; 
-        
-        // We force the key to be 32 bytes and use a static IV for 1:1 matching
-        const key = CryptoJS.enc.Utf8.parse(internalKey.padEnd(32, '0').substring(0, 32));
-        const iv = CryptoJS.enc.Utf8.parse('1234567890123456');
+    function testLibrary() {
+        if (typeof CryptoJS === 'undefined') {
+            alert("FAIL: Library missing.");
+        } else {
+            alert("SUCCESS: Library is loaded and ready.");
+        }
+    }
+
+    function execute(action) {
+        const status = document.getElementById('debugLog');
+        const input = document.getElementById('inputText').value;
+        let password = document.getElementById('secretKey').value;
+
+        // --- DEVGLAN MIMIC MECHANISM ---
+        // If password is empty, use the hidden default.
+        if (!password) {
+            password = "DEVGLAN_HIDDEN_DEFAULT"; 
+            console.log("Using hidden default key.");
+        }
+
+        if (!input) {
+            alert("Please enter some text first.");
+            return;
+        }
 
         try {
-            if (mode === 'enc') {
-                const encrypted = CryptoJS.AES.encrypt(data, key, { iv: iv });
-                document.getElementById('result').value = encrypted.toString();
-            } else {
-                const decrypted = CryptoJS.AES.decrypt(data, key, { iv: iv });
-                const plainText = decrypted.toString(CryptoJS.enc.Utf8);
-                
-                if (!plainText) {
-                    alert("Decryption failed. If you used a custom key to encrypt, you need that same key to decrypt.");
+            if (action === 'encrypt') {
+                // We use standard AES automation (OpenSSL style) to avoid IV errors
+                const encrypted = CryptoJS.AES.encrypt(input, password);
+                document.getElementById('outputText').value = encrypted.toString();
+                status.innerHTML = "Encryption Done with key: " + (password === "DEVGLAN_HIDDEN_DEFAULT" ? "[HIDDEN DEFAULT]" : "Custom Key");
+            } 
+            else if (action === 'decrypt') {
+                const decrypted = CryptoJS.AES.decrypt(input, password);
+                const result = decrypted.toString(CryptoJS.enc.Utf8);
+
+                if (!result) {
+                    status.innerHTML = "Decryption Failed. (Wrong Key?)";
+                    alert("Decryption returned empty. This usually means the key was wrong.");
                 } else {
-                    document.getElementById('result').value = plainText;
+                    document.getElementById('outputText').value = result;
+                    status.innerHTML = "Decryption Successful!";
                 }
             }
-        } catch (e) {
-            alert("Error: Invalid ciphertext.");
+        } catch (err) {
+            status.innerHTML = "Error: " + err.message;
+            alert("Crash: " + err.message);
         }
     }
 </script>
