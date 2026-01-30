@@ -4,20 +4,40 @@
 <meta charset="UTF-8">
 <title>Auto Encryption / Decryption Tool</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
 <style>
 body{
-  background:#020403;color:#eafff4;
-  font-family:monospace;padding:20px
+  background:#020403;
+  color:#eafff4;
+  font-family:monospace;
+  padding:20px
 }
-.container{max-width:700px;margin:auto}
+.container{
+  max-width:720px;
+  margin:auto
+}
 textarea,button{
-  width:100%;margin-top:10px;
-  padding:10px;border-radius:8px;
-  background:#000;color:#00ff88;
+  width:100%;
+  margin-top:12px;
+  padding:12px;
+  border-radius:8px;
+  background:#000;
+  color:#00ff88;
   border:1px solid #00ff88
 }
-button{cursor:pointer;font-weight:bold}
-.note{font-size:12px;color:#7fa99a;margin-top:6px}
+button{
+  cursor:pointer;
+  font-weight:bold
+}
+.note{
+  font-size:12px;
+  color:#7fa99a;
+  margin-top:10px
+}
+h2{
+  color:#00ff88;
+  text-align:center
+}
 </style>
 </head>
 
@@ -25,7 +45,7 @@ button{cursor:pointer;font-weight:bold}
 <div class="container">
 <h2>Auto Encryption / Decryption (Devglan-style)</h2>
 
-<textarea id="input" placeholder="Enter text or encrypted data"></textarea>
+<textarea id="input" placeholder="Enter plain text or encrypted data"></textarea>
 
 <button onclick="encrypt()">Encrypt</button>
 <button onclick="decrypt()">Decrypt</button>
@@ -35,7 +55,7 @@ button{cursor:pointer;font-weight:bold}
 
 <div class="note">
 Auto mode uses a browser-generated AES key stored locally.<br>
-Clearing browser data or clicking “Reset Auto Key” will break decryption.
+Resetting the key or clearing browser data will break old decryptions.
 </div>
 </div>
 
@@ -52,8 +72,12 @@ function getAutoKey(){
 
 /* ===== ENCRYPT ===== */
 function encrypt(){
-  const text = document.getElementById("input").value;
-  if(!text) return;
+  const text = document.getElementById("input").value.trim();
+  const output = document.getElementById("output");
+  if(!text){
+    output.value = "[!] No input";
+    return;
+  }
 
   const key = getAutoKey();
   const iv = CryptoJS.lib.WordArray.random(16);
@@ -61,43 +85,71 @@ function encrypt(){
   const encrypted = CryptoJS.AES.encrypt(
     text,
     key,
-    { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+    {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    }
   );
 
-  document.getElementById("output").value =
+  output.value =
     iv.toString(CryptoJS.enc.Hex) + ":" + encrypted.toString();
 }
 
-/* ===== DECRYPT ===== */
+/* ===== DECRYPT (FIXED & TOLERANT) ===== */
 function decrypt(){
-  const data = document.getElementById("input").value;
-  if(!data || !data.includes(":")){
-    document.getElementById("output").value = "[!] Invalid encrypted input";
+  const data = document.getElementById("input").value.trim();
+  const output = document.getElementById("output");
+  if(!data){
+    output.value = "[!] No input";
     return;
   }
 
   const key = getAutoKey();
-  const [ivHex, cipher] = data.split(":");
 
   try{
-    const iv = CryptoJS.enc.Hex.parse(ivHex);
+    let iv, cipher;
+
+    /* Case 1: IV:Base64 */
+    if(data.includes(":")){
+      const parts = data.split(":");
+      iv = CryptoJS.enc.Hex.parse(parts[0]);
+      cipher = parts[1];
+    }
+    /* Case 2: Base64 only (Devglan-like) */
+    else{
+      const raw = CryptoJS.enc.Base64.parse(data);
+      const hex = CryptoJS.enc.Hex.stringify(raw);
+      iv = CryptoJS.enc.Hex.parse(hex.slice(0, 32));       // first 16 bytes
+      cipher = CryptoJS.enc.Base64.stringify(
+        CryptoJS.enc.Hex.parse(hex.slice(32))
+      );
+    }
+
     const decrypted = CryptoJS.AES.decrypt(
       cipher,
       key,
-      { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+      {
+        iv: iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+      }
     ).toString(CryptoJS.enc.Utf8);
 
-    document.getElementById("output").value =
-      decrypted || "[!] Decryption failed";
-  }catch{
-    document.getElementById("output").value = "[!] Decryption error";
+    output.value = decrypted || "[!] Decryption failed";
+
+  }catch(e){
+    output.value = "[!] Invalid encrypted input";
   }
 }
 
 /* ===== RESET KEY ===== */
 function resetKey(){
   localStorage.removeItem("auto_aes_key");
-  alert("Auto encryption key reset.\nOld ciphertexts can no longer be decrypted.");
+  alert(
+    "Auto encryption key reset.\n\n" +
+    "Previously encrypted data can no longer be decrypted."
+  );
 }
 </script>
 </body>
